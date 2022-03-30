@@ -1,0 +1,60 @@
+pipeline {
+    agent {
+      kubernetes {
+        defaultContainer 'shell'  
+        yamlFile 'application/web/jenkins/agent-config/agent-cli-tools.yaml'
+      }
+    }
+
+    environment{
+        AWS_ACCESS_KEY_ID               = credentials('jenkins-aws-secret-key-id')
+        AWS_SECRET_ACCESS_KEY           = credentials('jenkins-aws-secret-access-key')
+        AWS_SESSION_TOKEN               = credentials('jenkins-aws-session-token')
+        TF_VAR_AWS_DEFAULT_REGION       = "us-east-2"
+        TF_VAR_AWS_REGION               = "us-east-2"
+        AWS_REGION                      = "us-east-2"
+        IMAGE_TAG               = "1.0-${GIT_COMMIT_SHORT}"
+        APPLICATION_NAME        = "web-service"
+        DOCKER_PASS             = credentials('jenkins-dockerpass')
+        GIT_COMMIT_SHORT        = sh(script: "echo \$(git rev-parse --short ${GIT_COMMIT})", returnStdout: true).trim()
+        REGISTRY_ROOT           = credentials('jenkins-registry-root')
+    }
+
+    options { disableConcurrentBuilds() }
+
+    stages {
+        stage('Build') { 
+            agent {
+                kubernetes {
+                    yamlFile 'application/web/jenkins/agent-config/nodebuild-tools.yaml'
+                }
+            }  
+            steps {
+                container('shell'){                                          
+                    sh '''#!/usr/bin/env bash
+                    cd application/web/docker
+                    docker login -u tusharmahale -p ${DOCKER_PASS}                            
+                    docker build -t ${REGISTRY_ROOT}/web-service:${IMAGE_TAG} .
+                    docker push ${REGISTRY_ROOT}/web-service:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy - Dev'){
+            steps {
+                container('shell'){
+                    sh ('${WORKSPACE}/application/web/jenkins/set-values.sh')
+                }
+            }
+        }
+
+        // stage('SmokeTest - Dev'){
+        //     steps {
+        //         container('shell'){
+        //             sh ('${WORKSPACE}/application/web/jenkins/test-web.sh')
+        //         }
+        //     }
+        // }
+    }
+}

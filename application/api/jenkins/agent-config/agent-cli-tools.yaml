@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+spec:
+  imagePullSecrets:
+  - name: regcreds
+  containers:
+  - name: shell
+    image: ubuntu-tools-cli:1.2
+    command:
+    - sleep
+    args:
+    - infinity

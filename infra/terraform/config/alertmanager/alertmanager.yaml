@@ -1,0 +1,11 @@
+global: {}
+receivers:
+- name: pagerduty
+  pagerduty_configs:
+  - routing_key: ${integration-key}
+    severity: '{{ if .CommonLabels.severity }}{{ .CommonLabels.severity | toLower }}{{ else }}critical{{ end }}'
+    description: 'EKS - ${cluster_name} - {{ .CommonAnnotations.description }}'
+    details:
+      pdservice: '{{ .CommonAnnotations.pdservice }}'
+route:
+  receiver: pagerduty

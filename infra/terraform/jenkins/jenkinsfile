@@ -1,0 +1,66 @@
+props = null
+
+def loadEnvironmentVariables(path){
+    props = readProperties  file: path
+    keys= props.keySet()
+    for(key in keys) {
+        value = props["${key}"]
+        env."${key}" = "${value}"
+    }
+}
+
+def setEnv(key,value){
+    println key
+    println value
+    env."${key}" = "${value}"
+}
+
+pipeline {
+
+    agent {
+      kubernetes {
+        defaultContainer 'shell'  
+        yamlFile 'infra/terraform/jenkins/agent-config/agent-cli-tools.yaml'
+      }
+    }
+    
+    environment{
+        AWS_ACCESS_KEY_ID               = credentials('jenkins-aws-secret-key-id')
+        AWS_SECRET_ACCESS_KEY           = credentials('jenkins-aws-secret-access-key')
+        AWS_SESSION_TOKEN               = credentials('jenkins-aws-session-token')
+        TF_VAR_AWS_DEFAULT_REGION       = "us-east-2"
+        TF_VAR_AWS_REGION               = "us-east-2"
+        AWS_REGION                      = "us-east-2"
+    }
+
+    parameters {
+        booleanParam(name: 'terraform_refresh', defaultValue: false, description: 'terraform refresh param')
+    }
+
+    options { disableConcurrentBuilds() }
+
+    stages {
+        
+        stage ('terraform-plan') {
+            steps {
+                    script {
+                        echo "terraform plan"
+                        sh ('${WORKSPACE}/infra/terraform/jenkins/terraform-installation.sh plan')
+                    }
+            }
+        }
+
+        stage ('terraform-apply') {
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    input message: 'Proceed?'
+                }
+
+                script {
+                    echo "terraform apply"
+                    sh ('${WORKSPACE}/infra/terraform/jenkins/terraform-installation.sh apply')
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,38 @@
+groups:
+- name: sso-securityhub
+  rules:
+  # Alert for any instance where desired deployment replicas are not available for 5 mins
+  - alert: DeploymentReplicasMismatch
+    expr: kube_deployment_status_replicas_unavailable{namespace =~ "monitoring|kube-system|flux-system"} != 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "WARNING - Desired replicas for deployment {{ $labels.deployment }} not matching current state"
+      description: "Deployment {{ $labels.deployment }} in Namespace {{ $labels.namespace }} has {{ $value }} replica(s) unavailable"
+      pdservice: "deployment-{{ $labels.deployment }}"
+  - alert: ingressServiceDown
+    expr: kube_service_status_load_balancer_ingress == 0
+    labels:
+      severity: critical
+    annotations:
+      summary: "CRITICAL - Ingress DOWN - {{ $labels.service }}"
+      description: "Ingress {{ $labels.service }} Service is Down in {{ $labels.namespace }} namespace, please check on priority"
+      pdservice: "ingress-{{ $labels.service }}"
+  - alert: eks-serviceDown
+    expr: kube_service_info == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "CRITICAL - Service DOWN - {{ $labels.service }}"
+      description: "Service {{ $labels.service }} Service is Down in {{ $labels.namespace }} namespace, please check on priority"
+      pdservice: "service-{{ $labels.service }}"
+  - alert: istioIngressError
+    expr: increase(istio_requests_total{response_code=~'5[0-9][0-9]'}[5m]) > 5
+    labels:
+      severity: critical
+    annotations:
+      summary: "CRITICAL - Server Side Error for {{ $labels.destination_service_name }} with Error Code {{ $labels.response_code }}, please check pod logs for more details"
+      description: "Error - {{ $labels.destination_service_name }}  Service"
+      pdservice: "istioingresserror-{{ $labels.destination_service_name }}"

@@ -1,0 +1,57 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: Bucket
+metadata:
+  name: frontend
+  namespace: application
+spec:
+  interval: 5m
+  provider: aws
+  bucketName: flux-cd-repo-web-service
+  endpoint: s3.amazonaws.com
+  region: us-east-2
+  timeout: 30s
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: frontend
+  namespace: application
+spec:
+  releaseName: "frontend"
+  chart:
+    spec:
+      chart: ./charts
+      sourceRef:
+        kind: Bucket
+        name: frontend
+  interval: 10m0s
+  targetNamespace: application
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta1
+kind: Bucket
+metadata:
+  name: backend
+  namespace: application
+spec:
+  interval: 5m
+  provider: aws
+  bucketName: flux-cd-repo-api-service
+  endpoint: s3.amazonaws.com
+  region: us-east-2
+  timeout: 30s
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: backend
+  namespace: application
+spec:
+  releaseName: "backend"
+  chart:
+    spec:
+      chart: ./charts
+      sourceRef:
+        kind: Bucket
+        name: backend
+  interval: 10m0s
+  targetNamespace: application

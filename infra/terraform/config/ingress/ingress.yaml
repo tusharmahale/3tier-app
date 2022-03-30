@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test
+  namespace: application
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/load-balancer-name: test-alb
+    alb.ingress.kubernetes.io/group.name: test
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/subnets: ${public_subnets}
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  defaultBackend:
+    service:
+      name: frontend-web-service
+      port:
+        number: 80
+  rules:
+  - host: "${route53_domain}"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: frontend-web-service
+            port:
+              number: 80
+  - host: "api.${route53_domain}"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: backend-api-service
+            port:
+              number: 80
+
